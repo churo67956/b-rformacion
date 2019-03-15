@@ -1,0 +1,24 @@
+//upper and lower warning interval 
+UTHW = 10;
+LTHW = -10;
+//upper and lower erro interval
+UTHE = 20;
+LTHE = -20;
+
+//calculamos el error
+error := tref - tmed;
+//errors first
+IF abs(error) >  UTHE THEN //error workflow
+	IF error > 0 THEN //upper error
+		label := "FALLO ALTA TEMPERATURA";
+	ELSIF error < 0 THEN //lower error
+		label := "FALLO BAJA TEMPERATURA";
+	END_IF
+ELSIF abs(error) >  UTHW THEN //warning workflow
+	IF error > 0 THEN //upper warning
+		label := "ALERTA ALTA TEMPERATURA";
+	ELSIF error < 0 THEN //lower warning
+		label := "ALERTA BAJA TEMPERATURA";
+	END_IF
+ELSE
+	label := ""; //empty label
