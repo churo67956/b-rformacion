@@ -1,0 +1,64 @@
+VAR CONSTANT
+	FILLING : USINT := 0;//estado de llenado
+	EMPTYING : USINT := 1;//estado de vaciado
+	EMERGENCY : USINT := 2;//estado de llenado de emergencia
+	MAX_DEPOSIT_CAPACITY : USINT := 20;//capacidad maxima del deposito 
+	MAX_TANK_CAPACITY : USINT := 10;//capacidad maxima del tanque
+	QFILLING : USINT := 1; //caudal de llenado de un tanque
+	QEMPTYING : USINT :=2; //caudal de vaciado de un tanque
+	QEMERGENCY : : USINT :=4;//caudal de vaciado de emergencia de un tanque
+END_VAR
+
+VAR
+	deposit : FLOAT;//deposito
+	tank : FLOAT;//tanque
+	state : USINT;//estado del tanque
+
+	do_filling : BOOL;//valvula de llenado
+	do_emptying : BOOL;//valvi de vaciado
+	do_emergency : BOOL;//boton de emergencia
+
+	di_filling : BOOL;
+	di_emptying : BOOL;
+	di_emergency : BOOL;
+END_VAR
+
+PROGRAM_CYCLE
+
+	CASE state OF
+		WAIT:
+			IF di_fill THEN	//peticion de llenar el tanque
+				state := FILLING;//actualizamos el estado
+			ELSIF di_empty THEN//peticion de vaciar el tanqu
+				state := EMPTYING;//actualizamos el estado
+			ELSIF di_emergency THEN//peticion de vaciado de emergencia
+				state := EMERGENCY;//actualizamos el estado
+			ELSE //no existe ningua peticion por lo que continuamos con la peticion anterior 
+				state := lastState;//actualizamos el estado
+		FILLING:
+			filling_tank;//llenado del tanque
+			lastState := state; //salvamos el ultimo estado
+			state := WAIT;//actualizamos el estado		
+		EMPTYING:
+			emptying_tank;//vaciado del tanque
+			lastState := state;//salvamos el ultimo estado
+			state := WAIT;//actualizamos el estado
+		EMERGENCY:
+			emergency_emptying_tank;//vaciado de emergencia del tanque
+			lastState := state;//salvamos el ultimo estado
+			state := WAIT;//actualimos el estado			
+	END_CASE; 
+	
+END_PROGRAM
+
+ACTION filling_tank
+	
+END_ACTION
+
+ACTION emptyin_tank
+
+END_ACTION
+
+ACTION emergency_emptying_tank
+
+END_ACTION

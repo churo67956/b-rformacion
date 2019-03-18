@@ -1,0 +1,116 @@
+VAR CONSTANT
+	RED : USINT := 0; //estado de rojo
+	YELLOW : USINT := 1;//estado de amarillo
+	GREEN : USINT := 2;//estado de verde
+END_VAR
+
+VAR 
+	//temporizadores
+
+	TON_smp1 : TON;//temporizador del semaforo de coches
+	TON_smp2 : TON;//temporizador del semaforo de peatones
+
+	//variables de estado
+
+	car_semaphore_state : USINT;//estado del semaforo de coches
+	pedestrian_semaphore_state : USINT;//estado del semaforo de peatones
+	
+	//variables de estado de interfaz
+	
+	do_led_green_car : BOOL; //led verde semaforo de coches
+	do_led_yellow_car : BOOL;//led amarillo semaforo de coches
+	do_led_red_car : BOOL;//led rojo semaforo de coches
+	do_led_green_pedestrian : BOOL;//led verde semaforo de peatones
+	do_led_red_pedestrian : BOOL;//led rojo semaforo de peatones
+END_VAR
+
+PROGRAM_INIT
+	car_semaphore_state := GREEN;//estado de partida del semaforo de coches
+	nextCarSemaphoreState; //inmediatamente actualizmos el estado y empezamos a temporizar
+	pedestrian_semaphore_state := RED;//estado de partida del semaforo de peatones
+	turnOnPedestrianSemaphore//encendemos el semaforo de peatones segun el estado
+END_PROGRAM
+
+PROGRAM_CYCLE
+
+	timeIsOver //comprobamos si los temporizadores han finalizado
+
+	if car_semaphore_state = READ OR pedestrian_semaphore_time_is_over THEN //comprobamos si es necesario encender el semaforo de peatones
+		nextPedestrianSemaphoreState;		
+		turnOnPedestrianSemaphore;//apagar y encender los led correspondientes
+	END_IF
+	
+	
+	IF car_semaphore_time_is_over THEN //ha finalizado el temporizador del semaforo de coches
+		nextCarSemaphoreState;//actualizamos el estado del semaforo
+		turnOnCarSemaphore; // apaga y enciende los led en la secuencia correcta
+	END_IF
+
+	
+END_PROGRAM
+
+//funcion de fijar el siguiente estado del semaforo de coches
+ACTION nextCarSemaphoreState 
+	IF car_semaphore_state = GREEN THEN //transicion al estado YELLOW
+		car_semaphore_state  := YELLOW; //actualizmos el estado
+		TON_smp1(IN:= TRUE,PT := T#2s;//arrancamos el temporizador
+	ELSIF state = YELLOW THEN //transicion al estado RED
+		car_semaphore_state := RED;//actualizamos el estado
+		TON_smp1(IN:= TRUE,PT := T#5s);//arrancamos  el temporizador
+	ELSIF state = RED THEN //transicion al estado GREEN
+		car_semaphore_state := GREEN;//actualizamos el estado
+		TON_smp1(IN:= TRUE,PT :=T#5s);//arrancamos el temporizador
+	END_IF
+END_ACTION
+
+//funcion que se encarga de apagar y encender el led correspondiente del semaforo de coches
+ACTION turnOnCarSemaphore 
+	IF car_semaphore_state = GREEN THEN //transicion al estado YELLOW
+		do_led_red_car := FALSE;
+		do_led_green_car := TRUE;
+	ELSIF car_semaphore_state = YELLOW THEN //transicion al estado RED
+		do_led_green_car := FALSE;
+		do_led_yellow_car := TRUE;
+	ELSIF car_semaphore_state = RED THEN //transicion al estado GREEN
+		do_led_yellow_car := FALSE;
+		do_led_red_car := TRUE;
+	END_IF
+END_ACTION
+
+ACTION nextPedestrianSemaphoreState 
+	IF pedestrian_semaphore_state = GREEN THEN //estado actual GREEN
+		pedestrian_semaphore_state := RED; //actualizamos el estado actual
+	ELSIF pedestrian_semaphore_state = RED THEN //estado actual RED
+		pedestrian_semaphore_state := GREEN; //actualizamos el estado actual
+		TON_smp2(IN:= TRUE,PT :=T#3s);//arrancamos el temporizador
+	END_IF
+END_ACTION
+
+ //funcion que se encarga de apagar y encender el led correspondiente del semaforo de peatones
+ACTION turnOnPedestrianSemaphore
+	IF pedestrian_semaphore_state = GREEN THEN
+		do_led_red_pedestrian := FALSE; //semaforo de peatones a rojo
+		do_led_green_pedestrian := TRUE;// a verde
+	ELSIF pedestrian_semaphore_state = RED THEN
+		do_led_green_pedestrian := FALSE; //semaforo de peatones a rojo
+		do_led_red_pedestrian := TRUE;// a verde
+	END_IF
+END_ACTION
+
+//funcion que comprueba si las temporizaciones de los semaforos han finalizado
+ACTION timeIsOver 
+	IF ( TON_smp1.IN AND TON_smp1.Q )  THEN //finaliza la temporizacion del semaforo de peatones
+		TON_smp1.IN := FALSE; //desactivamos el temporizador
+		car_semaphore_time_is_over := TRUE;//subimos el flag de alerta fin de temporizacion del semaforo de coches
+	ELSE//aun no ha finalizado la temporizacion del semaforo de peatones
+		car_semaphore_time_is_over := FALSE; //bajamos el flag de alerta de fin de temporizacion del semafor de coches
+		IF ( TON_smp2.IN AND TON_smp2.Q )  THEN //mientras tanto tambien comprobamos si ha finalizado la temporizacion del semaforo de peatones
+			TON_smp2.IN := FALSE;//desactivamos el temporizador
+			pedestrian_semaphore_time_is_over := TRUE;//subimos el flag de alerta fin de la temporizacion del semaforo de peatones
+		ELSE
+			pedestrian_semaphore_time_is_over := FALSE; //bajamos el flag de alerta fin de la temporizacion del semaforo de peatones
+		END_IF
+	END_IF
+END_ACTION
+
+
