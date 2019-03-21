@@ -1,0 +1,4 @@
+
+//calculamos el error
+error := tref - tmed;
+userror := abs(error);
