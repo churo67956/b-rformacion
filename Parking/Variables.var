@@ -1,0 +1,34 @@
+VAR
+	state : USINT;
+END_VAR
+VAR CONSTANT
+	WAIT : USINT := 0;
+END_VAR
+VAR
+	di_residential_entry : BOOL;
+	allow_entry_normal_park : BOOL;
+	rpcounter : BOOL;
+	MAXRP : BOOL;
+	npcounter : USINT;
+	MAXNP : BOOL;
+	RESIDENT_ENTRY : USINT;
+	allow_entry : BOOL;
+	NORMAL_ENTRY : USINT;
+	allow_entry_rp : BOOL;
+	allow_entry_np : BOOL;
+	do_full_rp : BOOL;
+	do_full_np : BOOL;
+	di_residential_exit : BOOL;
+	di_normal_entry : BOOL;
+	di_normal_exit : BOOL;
+	do_entryDoor : BOOL;
+	rpnormal : USINT;
+	do_access : BOOL;
+	normal_entry : USINT;
+	NORMAL_EXIT : USINT;
+	npnormal : USINT;
+	do_normalExitDoor : BOOL;
+	RESIDENT_EXIT : USINT;
+	do_residentExitDoor : BOOL;
+	allow_exit : BOOL;
+END_VAR

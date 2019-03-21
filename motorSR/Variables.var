@@ -1,0 +1,13 @@
+VAR
+	led_marcha : BOOL;
+	motor : BOOL;
+	led_fallo : BOOL;
+	di_start : BOOL;
+	di_seta : BOOL;
+	di_stop : BOOL;
+	di_reset : BOOL;
+	di_disyuntor : BOOL;
+	x : BOOL;
+	fallo_seta : BOOL;
+	fallo_disyuntor : BOOL;
+END_VAR

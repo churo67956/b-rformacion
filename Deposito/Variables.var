@@ -1,0 +1,27 @@
+VAR
+	state : USINT;
+	WAIT : USINT;
+	FILLING : USINT;
+	EMPTYING : USINT;
+	EMERGENCY : USINT;
+	di_filling : BOOL;
+	TON_timer : TON;
+	filling_timer : USINT;
+	emptying_timer : USINT;
+	emergency_timer : USINT;
+	timer_interval : USINT;
+	filling_period : USINT;
+	emptying_period : USINT;
+	emergency_period : USINT;
+	tank_level : USINT;
+	MAX_TANK_LEVEL : USINT;
+	MAX_DEPOSIT_LEVEL : USINT;
+	filling_step : USINT;
+	emptying_step : USINT;
+	emergency_step : USINT;
+	deposit_level : USINT;
+	lastState : USINT;
+	di_emptying : BOOL;
+	di_emergency : BOOL;
+	emergency : BOOL;
+END_VAR

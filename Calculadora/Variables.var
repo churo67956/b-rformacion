@@ -1,0 +1,13 @@
+VAR
+	di_plus : BOOL;
+	di_substract : BOOL;
+	di_times : BOOL;
+	di_divs : BOOL;
+	divs : BOOL;
+	di_pow : BOOL;
+	pow : BOOL;
+	di_sqrts : BOOL;
+	result : REAL;
+	di_val1 : REAL;
+	di_val2 : REAL;
+END_VAR

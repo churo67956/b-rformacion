@@ -1,0 +1,6 @@
+VAR
+	di_pulsadorOff : USINT; (*Pulsador Off*)
+	do_led : BOOL; (*Feedback*)
+	di_pulsadorOn : USINT; (*Pulsador On*)
+	estado : USINT;
+END_VAR

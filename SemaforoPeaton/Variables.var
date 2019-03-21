@@ -1,0 +1,20 @@
+VAR
+	TON_5seg : TON;
+	TON_2seg : TON;
+	TON_green : TON;
+	TON_yellow : TON;
+	TON_red : TON;
+	green : BOOL;
+	yellow : BOOL;
+	red : BOOL;
+	do_led_green : BOOL;
+	do_led_yellow : BOOL;
+	do_led_read : BOOL;
+	di_btn_press : BOOL;
+	pending_request : BOOL;
+	cross : BOOL;
+	TON_cross : TON;
+	let_ : BOOL;
+	let_cross : BOOL;
+	do_led_cross : BOOL;
+END_VAR

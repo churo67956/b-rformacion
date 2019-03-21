@@ -1,0 +1,25 @@
+VAR
+	di_activar : BOOL;
+	TON_contador : TON;
+	TON_temporizador : TON;
+	contador : USINT;
+	led : BOOL;
+	di_btn_press : BOOL;
+	di_btn_reset : BOOL;
+	do_led : BOOL;
+	contador3 : USINT;
+	press_pulsado : BOOL;
+	pulsado : BOOL;
+	arrancar_temporizador_2seg : BOOL;
+	TON_temporizador_2seg : TON;
+	arrancar_temporizador_5seg : BOOL;
+	TON_temporizador_5seg : TON;
+	encender_led : BOOL;
+	times : USINT;
+	start_timer_5seg : BOOL;
+	TON_5seg : TON;
+	turn_on_led : BOOL;
+	start_timer_2seg : BOOL;
+	TON_2seg : TON;
+	stop_timer_2seg : BOOL;
+END_VAR

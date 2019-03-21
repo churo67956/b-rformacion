@@ -1,0 +1,5 @@
+VAR
+	ai_temperatura_minima : {REDUND_UNREPLICABLE} REAL := 50.0; (*Temperatura minima*)
+	ai_temperatura_maxima : {REDUND_UNREPLICABLE} REAL := 150.0; (*Temperatura maxima*)
+	ao_alarma : STRING[7]; (*Feedback*)
+END_VAR

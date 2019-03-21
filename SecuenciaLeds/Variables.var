@@ -1,0 +1,19 @@
+VAR
+	do_fijo : BOOL;
+	di_iniciar : BOOL;
+	di_inicio : BOOL;
+	TON_3seg : TON;
+	TON_9seg : TON;
+	activar : BOOL;
+	di_led_3seg : BOOL;
+	TRUEm : BOOL;
+	di_led_2seg : BOOL;
+	di_led_4seg : BOOL;
+	di_fijo : BOOL;
+	inicio : BOOL;
+	TON_2seg : TON;
+	TON_4seg : TON;
+	di_led_fijo : BOOL;
+	di_btn_inicio : BOOL;
+	di_led_3led : BOOL;
+END_VAR
