@@ -1,182 +1,152 @@
-//TEMPORIZADOR DINAMICO
-TON_dynamic : REFERENCETO TO TON;
+//arrancamos el temporizador
+TON_ms.IN := TRUE;
+TON_ms.PT := T#0.5s;
+TON_ms();
 
-//TEMPORIZADORES
-TON_5seg();//temporizador de 5 segundos
-TON_5seg.PT = T#5s;
-TON_2seg();//temporizador de 2 segundos
-TON_5seg.PT = T#2s;
-TON_3seg();//temporizador de 3 segundos
-TON_5seg.PT = T#3s;
-TON_gap();//temporizador de 500 milis
-TON_5seg.PT = T#500ms;
-
-//ESTADOS SEMAFOROS
-GREEN := 0;//verde
-YELLOW := 1;//amarillo	
-RED := 2;//rojo
-YELLOW_IN := 4;//amarillo intermitente
-GREEN_IN := 5;//verde intermitente
-OFF := 3;//apagado
-
-//FLUJO DE LA APLICACION
-NORMAL := 0;//flujo de normal solo semaforo de coches
-ALTERNATIVE := 1;//flujo de datos alternativo con el boton pulsado
-
-
-//
-//PROGRAMA PRINCIPAL
-//
-
-
-IF WORKFLOW = NORMAL THEN //solo esta en funcionamiento el semaforo
-	IF  TON_dymanic.Q AND TON_dymanic.Q = TRUE THEN //el temporizador ha finalizado, actualizar el estado
-		updateState;//actualizamos el estado, al que toque
-	END_IF
-	//DENTRO DEL FLUJO NORMAL ES NECESARIO COMPROBAR SI EXISTE ALGUNA SOLICITUD DE FLUJO ALTERNATIVO
-	IF di_btn_request THEN //existe solicitud,pero solo se atiende si el semaforo esta en ROJO
-		IF (state1 = RED) THEN //debemos de alternar el flujo del normal al alternativo
-			workflowTransition
-		(*ELSE//continuamos con el flujo normal
-			WORKFLOW := NORMAL //mantenemos el flujo*)
-		END_IF
-	END_IF
-	
-ELIF WORFLOW = ALTERNATIVE THEN //flujo alternativo
-	IF TON_dymanic.Q AND TON_dymanic.Q = FALSE THEN //el temporizador aun no ha finalizado
-		//TODO - AQUI LA IMPLEMENTACION DE LA ANIMACION INTERMITENTE
-		IF (state1 = YELLOW_IN OR state2 = GREEN_IN) THEN
-			intermittent;	
-	ELSIF  TON_dymanic.Q AND TON_dymanic.Q  THEN//el temporizador ha finalizado, actualizar el estado
-		IF (state1 = YELLOW_IN OR state2 = GREEN_IN) THEN //animacion de intermitente
-			stopIntermittent;
-		IF (state1 = RED OR state2 = GREEN_IN) THEN
-			workflowTransition;
-		ELSE
-			updateState;//actualizamos el estado, al que toque
-	END_IF
-
-END_IF 
-
-di_btn_request := FALSE;
-
-do_cled_red := state1 = RED;
-do_cled_yellow := state1 = YELLOW OR state1 = YELLOW_IN;
-do_cled_green := state1 = GREEN;
-
-do_pled_red := state2 = RED;
-do_pled_yellow := state2 = YELLOW;
-do_pled_green := state2 = GREEN OR state2 = GREEN_IN; 
-
-//
-//ACCIONES
-//
-
-ACTION workflowTrasition
-	IF WORKFLOW = NORMAL THEN
-		TON_dynaminc.IN:= FALSE; //paramos la temporizacion 
-		WORKFLOW := ALTERNATIVE; //actualizamos el flujo
-		state1 := YELLOW_IN;
-		state2 := RED;
-		
-	ELSIF WORKFLOW = ALTERNATIVE THEN
-		WORKFLOW := NORMAL; //actualizamos el flujo
-		state1 := GREEN;
-		state2:= RED;
-	END_IF
-	ton_dynaminc_in;
-ACTION_END		 
-
-
-//FUNCION DE INICIALIZACION DE LA APLICACION
-ACCION init
-WORKFLOW = NORMAL;//flujo normal
-//WORKFLOW = ALTERNATIVO;//flujo normal
-IF WORKFLOW = NORMAL THEN //solo semaforo coches
-	//MODELO DE DATOS
-	state1 := GREEN; //semaforo de coches a verder
-	state2 := OFF; //semaforo de peatones apagado
-ELSIF WORKFLOW = ALTERNATIVE THEN //partimos con el boton pulsado, semaforo de peatones y coches
-	//MODELO DE DATOS
-	state1 := YELLOW_IN; //semaforo de coches a amarillo, ojo en realizada ira alternado con el estado OFF
-	state2 := RED; //semaforo de peatones apagado
+//peticion de resetear el timer, esto cuando se pulsa el boton puede que no coincida con los 0.5s o multiplos
+IF timer_reset THEN
+   TON_ms.IN := FALSE;
+   TON_ms.IN := TRUE;
+   TON_ms.PT := T#0.5s;
+   TON_ms();
 END_IF
-ton_dynamic_in;//arrancamos el temporizamos dado por los estados
-ACCION_END
-
-//funcion que actualiza el estado del semaforo de coches y peatones
-ACTION ton_dynaminc_in
-	IF WORKFLOW = NORMAL THEN
-		IF state = GREEN OR state = RED THEN
-			TON_dymanic ACCESS ADDR (TON_5seg);
-		ELIF state = YELLOW THEN
-			TON_dymanic ACCESS ADDR (TON_2seg);
-		END_IF
-	ELSIF WORKFLOW = ALTERNATIVE THEN
-		IF (state1 = YELLOW_IN AND state2 = RED) OR (state1 = RED AND state2 = GREEN_IN) THEN
-			TON_dymanic ACCESS ADDR (TON_3seg);
-		ELSIF state1 = RED AND state2 = GREEN THEN
-			TON_dymanic ACCESS ADDR (TON_5seg);
-		END_IF
-	END_IF
-	TON_dymanic.IN := TRUE;
-END_ACTION
-
-//funcion que actualiza el estado del semaforo de coches y peatones
-ACTION updateState
-	IF WORKFLOW = NORMAL THEN
-		IF state1 = GREEN THEN
-			stata1 := YELLOW;
-		ELSIF state1 = YELLOW THEN
-			stata1 := RED;
-		ELSIF state1 = RED THEN
-			stata1 := RED;
-		END_IF
-	ELSIF WORKFLOW = ALTERNATIVE THEN
-		IF state1 = YELLOW_IN AND state2 = RED THEN
-			state1 = RED;
-			state2 = GREEN;
-		ELSIF state1 = RED AND state2 = GREEN THEN
-			stata1 := RED;
-			stata2 := GREEN_IN;
-		ELSIF state1 = RED AND state2 = GREEN_IN THEN
-			state1 := GREEN;
-			state2 := RED;
-		END_IF
-	END_IF
-	ton_dynaminc_in; 
-END_ACTION
 
 
-//se encarga de encender o apagar un led
-ACTION toggle
-	IF TON_gap.IN = TRUE AND TON_gap.Q = TRUE THEN //temporizacion finalizada
-		TON_gap.IN := FALSE;//bajamos el flag de temporizacion
-		IF interState = interTarget THEN //apagamos el led
-			interState := OFF;//estado de apagado
-		ELSIF interState = OFF;//encendemos el estado
-			interState := interTarget ;//restablecemos el estado anterior al apagado
-		ENDIF;
-		TON_gap.IN := TRUE;//volvemos a lanzar la animacion
-	(*ELSIF TON_gap.IN = TRUE AND TON_gap.Q = FALSE THEN 
-		//temporizacion NO finalizada *)
-	END_IF
-END_ACTION
+//avanzamos los temporizadores
+IF TON_ms.IN and TON_ms.Q THEN//tras una unidad de tiempo de 0.5s
+   TON_ms := FALSE;//para el temporizador
+   //para el semaforo de coches
+   IF  sc_state = RED THEN//rojo en coches
+       sc_red_timer := sc_red_timer + 1;//incrementar el contador
+   ELSIF sc_state := YELLOW THEN//amarillo en coches
+       sc_yellow_timer := sc_yellow_timer + 1;//incrementar el contador
+   ELSIF sc_state = GREEN THEN//verde en coches
+       sc_green_timer := sc_green_timer + 1;//incrementar el contador
+   ELSIF sc_state = YELLOW_INT THEN//amarillo en coches
+       sc_yi_timer := sc_yi_timer + 1;//incrementar el contador
+       yi_timer := yi_timer + 1;//incrementar el temporizador para la animacion
+   ELSIF sc_state = RED_LON THEN//rojo largo
+       sc_rl_timer := sc_rl_timer + 1;//incrementar el temporizador de rojo largo
+   END_IF	   
+   //para el semaforo de peatones
+   IF sp_state = RED_FIX THEN//rojo fijo
+      sp_red_timer : sp_red_timer + 1;//incrementar el timer
+   ELSIF sp_state = GREEN THEN//verde
+      sp_green_timer := sp_green_timer + 1;//incrementar el timer
+   ELSIF sp_state = GREEN_INT THEN//verde intermitente
+      sp_gi_timer := sp_gi_timer + 1;//incrementar el timer
+      gi_timer := gi_timer + 1;//timer de animacion
+   END_IF
+   TON_ms.Q := TRUE;
+   TON_ms.PT := T#0.5s;
+END_IF
 
-//lanza la animacion de intermitente
-ACTION intermittent
-		TON_gap.IN = TRUE;
-		IF (state1 = YELLOW_IN) 
-			interState := state1;//estado que vamos a realizar la animacion de intermitente
-			interTarget := state1;//backup del estado para volver a restablecer tras realizar el apagado 
-		ELSIF (state2 = GREEN_IN) THEN 
-			interState := state2;//estado que vamos a realizar la animacion de intermitente
-			interTarget := state2;//backup del estado para volver a restablecer tras realizar el apagado 
-		END_IF
-		toggle;
-END_ACTION
+IF  sc_state = GREEN THEN//en verde coches
+    IF sc_green_timer > 9 THEN//tras los 5 segundos
+       sc_green_timer :=0;//reiniciar el temporizador
+       do_sc_green := FALSE;//apagar el verde
+       sc_state = YELLOW;//ir al amarillo
+    ELSE
+       do_sc_green := TRUE;//encender el amarillo
+    END_IF
+ELSIF sc_state := YELLOW THEN//en amarillo coches
+    IF sc_yellow_timer > 3 THEN//tras los 2 segundos 
+       sc_yellow_timer :=0;//reiniciar el temporizador
+       do_sc_yellow := FALSE;//apagar el amarillo
+       sc_state = RED;//ir al rojo
+    ELSE
+       do_sc_yellow := TRUE;//encender el amarillo
+    END_IF
+ELSIF sc_state = RED THEN//en rojo coches
+    IF sc_red_timer > 9 THEN//tras los 5 segundos
+       sc_red_timer :=0;//reiniciar el timer
+       do_sc_red := FALSE;//apagar el rojo
+       sc_state = GREEN;//encender el verde
+    ELSE
+       IF di_btn_pass THEN//si se pulsa el boton de paso
+       	   sc_red_timer := 0;//reiniciar el timer 
+       	   do_sc_red := FALSE;//apagar el rojo
+       	   sc_state := YELLOW_INT;//ir a amarillo intermitente
+	   timer_reset := TRUE;//resetear el temporizador
+       ELSE
+	   do_sc_red := TRUE;//enceder el rojo
+       END_IF
+    END_IF
+ELSIF sc_state = YELLOW_INT THEN//amarillo intermitente
+     IF sc_yi_timer > 5 THEN//tras 3 segundos
+     	sc_yi_timer := 0;//reiniciar el timer
+	yi_timer := 0;//reniciar el timer de animacion
+	sc_state = RED_LON;//ir a rojo de duracion larga
+	do_sc_yellow := FALSE;//apagar el amarillo
+     ELSIF
+       IF yi_timer > 1 THEN//tras la duracion de la animacion
+       	  yi_timer := 0;//reinciar el timer 
+       	  do_sc_yellow := NOT do_sc_yellow;//realizar el toggle
+       END_IF
+     END_IF
+ELSIF sc_state = RED_LON THEN
+     IF sc_rl_timer > 15 THEN
+       sc_rl_timer :=0;
+       do_sc_red := FALSE;
+       sc_state = GREEN;
+    ELSE
+       do_sc_red := TRUE;
+    END_IF
+END_IF
 
-//para la animacion de intermitente
-ACTION stopIntermittent
-	TON_gap.IN := FALSE;
-END_ACTION
+
+ IF state_sp = RED THEN//semaforo de peatones a rojo
+     IF state_sc = YELLOW_INT AND  THEN
+       state_sp = RED_FIX;
+       do_sp_red := FALSE;
+     ELSE
+        do_sp_red := TRUE;//rojo a on
+     END_IF
+  ELSIF state_sp = RED_FIX THEN//semaforo de peatones a verde
+     IF sp_red_timer > 5 THEN
+     	sp_red_timer := 0;
+	do_sp_red := FALSE;
+	state_sp := GREEN;
+     ELSE
+         do_sp_red := TRUE;//rojo a on
+     END_IF
+   ELSIF state_sp = GREEN THEN//semaforo de peatones a verde
+     IF sp_green_timer > 9 THEN
+     	sp_green_timer := 0;
+	do_sp_green := FALSE;
+	state_sp := GREEN_IN;
+     ELSE
+         do_sp_green := TRUE;//rojo a on
+     END_IF
+   ELSIF sc_state = GREEN_INT THEN
+     IF sc_gi_timer > 4 THEN
+     	sc_gi_timer := 0;
+	gi_timer := 0;
+	sc_state = RED;
+	do_sp_green := FALSE;
+     ELSE
+       IF gi_timer > 1 THEN
+       	  gi_timer := 0;
+       	  do_sp_green := NOT do_sp_green;
+       END_IF
+     END_IF
+  END_IF
+  
+  //FIN ACCIONES
+
+  di_btn_pass := FALSE;
+// limites maximos de los temporizadores de los coches
+sc_red_timer_max := 5/0.5;//temporizacion maxima del estado rojo
+sc_yellow_timer_max := 2/0.5;//temporizacion maxima del estado de amarillo
+sc_green_timer_max := 5/0.5;//temporizacion maxima del estado de verde
+sc_yi_timer_max := 3/0.5;//temporizacion maxima del estado de amarillo intermitente
+sc_rl_timer_max := 8/0.;//temporizacion maxima del estado rojo largo
+//limites maximos de lso temproizadores de los peatones
+sp_red_timer_max := 3/0.5;
+sp_green_timer_max:=5/0.5;
+sp_gi_timer_max:=3/0.5;
+
+//SERVICIO DE INTERMINENTE EXISTEN DOS UNO PARA EL AMARILLO Y OTRO PARA EL VERDE
+yi_timer_max := 1;
+gi_timer_max := 1;
+
