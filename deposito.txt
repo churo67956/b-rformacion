@@ -1,174 +1,131 @@
-//Programa que abre o cierra las valvulas de un tanque
-//como fuente de alimentacion tenemos un deposito
-//En cada instante y siempre a peticion del usuario vamos a tener una 
-//valvula abierta.
 
-//DECLARACION DE LAS VARIABLES
-VAR CONSTANT
-	FILLING : USINT := 0;//estado de llenado
-	EMPTYING : USINT := 1;//estado de vaciado
-	EMERGENCY : USINT := 2;//estado de llenado de emergencia
-	MAX_DEPOSIT_CAPACITY : USINT := 20;//capacidad maxima del deposito 
-	MAX_TANK_CAPACITY : USINT := 10;//capacidad maxima del tanque
-	QFILLING : USINT := 1; //caudal de llenado de un tanque
-	QEMPTYING : USINT :=2; //caudal de vaciado de un tanque
-	QEMERGENCY : USINT :=4;//caudal de vaciado de emergencia de un tanque
-END_VAR
-
-VAR
-	deposit : FLOAT;//deposito
-	tank : FLOAT;//tanque
-	state : USINT;//estado del tanque
-
-	canEmptyTank : BOOL;//podemos haciar el tanque
-	tankIsFull : BOOL;//el tanque esta lleno
-	depositHasPower: BOOL;//tenemos suficiente deposito 
-
+PROGRAM _INIT
+	(* Insert code here *)
+	state := WAIT;
+	last_state := WAIT;
+	filling_step := 1;//cantidad de llenado cada segundo
+	emptying_step:= 2;//cantidad de vaciado cada segundo
+	emergency_step := 4;//cantidad de vaciado cada segundo
 	
-	do_filling : BOOL;//valvula de llenado
-	do_emptying : BOOL;//valvi de vaciado
-	do_emergency : BOOL;//boton de emergencia
-
-	di_filling : BOOL;//boton de llenado
-	di_emptying : BOOL;//boton de vaciado
-	di_emergency : BOOL;//boton de emergencia
-
-	TON_timer : TON;//temporizador
-END_VAR
-
-PROGRAM_INIT
-	state := WAIT;//estado de defecto, en espera
-	lastState := state ;//ultimo estado en espera
-	deposit := 20;//deposito lleno a 20 litros
-	tank := 10;tanque lleno a 10 litros
-
-PROGRAM_CYCLE
-	CASE state OF
-		WAIT://estado de espera a las acciones del usuario y se encarga de abrir y cerrar las valvulas
-			attend_user_request;//atendemos a la peticion del usuario, si es que existe alguna
-			pick_correct_valve;//seleccionamos la valvula correspondiente
-			update_user_interface;//actualizamos la interfaz de usuario
-		FILLING://estado de llenado
-			filling_tank;//llenado del tanque
-			lastState := state; //salvamos el ultimo estado
-			state := WAIT;//actualizamos el estado		
-		EMPTYING://estado de vaciado
-			emptying_tank;//vaciado del tanque
-			lastState := state;//salvamos el ultimo estado
-			state := WAIT;//actualizamos el estado
-		EMERGENCY://estado de vaciado de emergencia
-			emergency_emptying_tank;//vaciado de emergencia del tanque
-			lastState := state;//salvamos el ultimo estado
-			state := WAIT;//actualimos el estado			
-	END_CASE; 
+	MAX_TANK_LEVEL := 10;//nivle máximo del tanque
+	MAX_DEPOSIT_LEVEL := 20;//nivel maximo del deposito
+	tank_level := MAX_TANK_LEVEL;//tanque lleno 
+	deposit_level := MAX_DEPOSIT_LEVEL;//deposito lleno
 END_PROGRAM
 
-//atendemos a la interfaz de usuario
-ACTION attend_user_request
-	IF di_filling THEN//peticion de llenar el tanque
-		state := FILLING;//actualizamos el estado
-	ELSIF di_emptying THEN//peticion de vaciar el tanqu
-		state := EMPTYING;//actualizamos el estado
-	ELSIF di_emergency THEN//peticion de vaciado de emergencia
-		state := EMERGENCY;//actualizamos el estado
-	ELSE //no existe ningua peticion por lo que continuamos con la peticion anterior 
-		state := lastState;//actualizamos el estado
+PROGRAM _CYCLIC
+	
+	IF do_emergency = FALSE THEN
+		//ATENDER A LAS PETICIONES DEL USARIO
+		IF di_filling THEN//peticion de llenar el tanque
+			state := FILLING;//actualizamos el estado
+		ELSIF di_emptying THEN//peticion de vaciar el tanqu
+			state := EMPTYING;//actualizamos el estado
+		ELSIF di_emergency THEN//peticion de vaciado de emergencia
+			state := EMERGENCY;//actualizamos el estado
+		END_IF
+	END_IF	
+	
+	//reset timer	
+	IF state <> last_state THEN
+		TON_timer.IN:=FALSE;
+		IF last_state = FILLING THEN
+			filling_timer := 0;
+		ELSIF last_state = EMPTYING THEN
+			emptying_timer := 0;
+		ELSIF last_state = EMERGENCY THEN
+			emergency_timer := 0;
+		END_IF
 	END_IF
-	IF state <> WAIT THEN//existe alguna peticion o continuamos a tendiendo a la peticion
-		TON_timer(IN:TRUE,PT:T#1s);//arrancamos el temporizador
+	//empezar a temporizar
+	IF start_timer THEN//existe alguna peticion o continuamos a tendiendo a la peticion anterior
+		start_timer := FALSE;
+		TON_timer.IN:=TRUE;
+		TON_timer.PT:=T#1s;//arrancamos el temporizador
+		TON_timer();
+	ELSE
+		TON_timer.IN:= FALSE;
+	END_IF	
+		
+	//TEMPORIZACION DE UN SEGUNDO MININA UNIDAD DE TIEMPO
+	IF TON_timer.IN AND TON_timer.Q THEN//ha pasado un segundo
+		IF state = FILLING THEN
+			filling_timer := filling_timer + 1;
+		ELSIF state = EMPTYING THEN
+			emptying_timer := emptying_timer + 1;
+		ELSIF state = EMERGENCY THEN
+			emergency_timer := emergency_timer + 1;
+		END_IF
 	END_IF
-END_ACTION
+		
+	//RESETAMOS LAS VARIABLES DE USUARIO
+	di_filling := FALSE;
+	di_emptying:=FALSE;
+	di_emergency := FALSE;	
 
-//seleccionamos la valvula correcta en cada instante 
-ACTION pick_correct_valve 
-	IF lastState = FILLING THEN //ultimo estado llenado cerramos la valvula de llenado
-		do_filling := FALSE;
-	ELSIF lastState = EMPTYING THEN//ultimo estado vaciado cerramos la valvula de vaciado
-		do_emptying := FALSE;
-	ELSIF lastState = EMERGENCY THEN//ultimo estado emergencia cerramos la valvula de emergencia
-		do_emergency := FALSE;
+	ELSIF state = FILLING THEN
+		
+		IF tank_level < MAX_TANK_LEVEL AND deposit_level > 0 THEN//llenar si el tanque no esta lleno y el nivel del 
+			start_timer := TRUE;
+			do_filling := TRUE;
+			IF filling_timer > 0 THEN //nos aseguramos que han pasado un segundo
+				filling_timer := 0; //reiniciamos el contador deposito mayor que el paso de llenado
+				IF  deposit_level > filling_step THEN
+					tank_level := tank_level + filling_step;
+					deposit_level := deposit_level -filling_step;
+				ELSE
+					tank_level := tank_level + deposit_level;
+					deposit_level := 0;
+				END_IF
+			END_IF
+		ELSE
+			start_timer := FALSE;
+			do_filling := FALSE;
+			state = WAIT;
+		END_IF
+		lastState := FILLING;		
+	ELSIF state = EMPTYING THEN
+		IF tank_level > 0 THEN
+			start_timer := TRUE;
+			do_filling := TRUE;
+			IF emptying_timer > 0 THEN //nos aseguramos que han pasado un segundo
+				emptying_timer := 0; //reiniciamos el contador
+				IF tank_level > emptying_step THEN//vaciar si el nivel del tanque es mayor que el paso de vaciado
+					tank_level := tank_level - emptying_step;
+				ELSE 
+					tank_level := 0;
+				END_IF
+			END_IF
+		ELSE
+			start_timer := FALSE;
+			do_emptying := FALSE;
+			state = WAIT;
+		END_IF
+		lastState := EMPTYING;
+	ELSIF state = EMERGENCY THEN
+		IF tank_level > 0 THEN
+			start_timer := TRUE;
+			do_emergency := TRUE;
+			IF emergency_timer > 0 THEN //nos aseguramos que han pasado un segundo
+				emergency_timer := 0; //reiniciamos el contador
+				IF tank_level > emergency_step THEN//vaciar si el nivel del tanque es mayor que el paso de emergencia
+					tank_level := tank_level - emergency_step;
+				ELSE 
+					tank_level := 0;
+				END_IF
+			END_IF
+		ELSE
+			start_timer := FALSE;
+			do_emergency := FALSE;
+			state = WAIT;
+		END_IF
+		lastState := EMERGENCY;
 	END_IF
 	
-	IF state = FILLING THEN// estado llenado abrimos la valvula de llenado
-		do_filling := TRUE;
-	ELSIF state = EMPTYING THEN//estado vaciado abrimos la valvula de vaciado
-		do_emptying := TRUE;
-	ELSIF state = EMERGENCY THEN//estado emergencia abrimos la valvula de emergencia
-		do_emergency := TRUE;
-	END_IF
-END_ACTION
+END_PROGRAM
 
-//funcion la de actualizar las variables que representa la interfaz del usuario
-ACTION update_user_interface
-	di_fill := FALSE; //reseteamos el estado del boton de llenado
-	di_empty := FALSE; //reseteamos el estado del boton de vaciado
-	di_emergency := FALSE; //reseteamos el estado del boton de emergencia
-	do_tank := tank;//actualizamos el nivel del tanque
-	do_deposit := deposit;//actualizamos el nivel del deposito
-END_ACTION
-
-ACTION filling_tank
-	tank_is_full; preguntamos si el tanque esta lleno
-	deposit_has_power; preguntamos si el deposito es capaz de llevanar el tanque
-	IF tankIsFull = FALSE AND 
-		depositHasPower = TRUE AND TON_timer.Q THEN //el tanque no esta lleno, el deposito no esta vacio y ha pasado el un segundo
-		TON_timer.Q := FALSE;//paramos el timer
-		tank := tank + QFILLING;//llenamos el tanque 
-	END_IF	
-END_ACTION
-
-ACTION can_empty_tank
-	IF state = EMPTYING THEN //si estoy en el estado EMPTYING 
-		IF tank > QEMPTYING THEN //si tengo un volumen mayor que el caudal a evacuar
-			canEmptyTank := TRUE;//puedo continuar vaciando
-		ELSE
-			canEmptyTank := FALSE;//no puedo continuar vaciando
-		END_IF
-	ELSIF state = EMERGENCY THEN //si estoy en el estado EMERGENCY 
-		IF tank > QEMERGENCY THEN //si tengo un volumen mayor que el caudal a evacuar
-			canEmptyTank := TRUE;//puedo continuar vaciando
-		ELSE
-			canEmptyTank := FALSE;//no puedo continuar vaciando
-		END_IF
-	END_IF
-END_ACTION
-
-ACTION emptying_tank
-	can_empty_tank;//vemos si somos capaces de vaciar el tanque
-	IF canEmptyTank AND TON_timer.Q THEN //si se puede vaciar el tanque y ha pasado un segundo
-		TON_timer.IN := FALSE;//paramos el temporizador
-		tank := tank - QEMPTYING;//vaciamos el tanque
-	ELSE//no somos capaces de vaciar el tanque
-		 tank := 0;//vaciar por completo
-	END_IF
-END_ACTION
-
-ACTION  emergency_emptying_tank
-	can_empty_tank;//vemos si somos capaces de vaciar el tanque
-	IF canEmptyTank AND TON_timer.Q THEN //si se puede vaciar el tanque y ha pasado un segundo
-		TON_timer.IN := FALSE;//paramos el temporizador
-		tank := tank - QEMERGENCY;//vaciamos el tanque
-	ELSE//no somos capaces de vaciar el tanque
-		tank := 0;//vaciar por completo
-	END_IF
-END_ACTION
-
-
-ACTION tank_is_full 
-	IF tank = MAX_TANK_CAPACITY THEN //si la capacidad del tanque es la maxima
-		tankIsFull := TRUE;//subir el flag
-	ELSE
-		tankIsFull := FALSE;//bajar el flag
-	ENDIF
-END_ACTION 
-
-
-ACTION deposit_has_power 
-	IF deposit < QFILLING then //la capacidad del deposito es menor que el caudal a retirar por segundo
-		depositHasPower := FALSE;//no tenemos suficientes litros
-	ELSE
-		depositHasPower := TRUE;//tenemos suficientes litros
-	ENDIF
-END_ACTION
-
+PROGRAM _EXIT
+	(* Insert code here *)
+	 
+END_PROGRAM
 

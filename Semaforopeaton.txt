@@ -1,20 +1,22 @@
-PROGRAM_INIT
-  state_sc := RED;//estado en rojo
+PROGRAM _INIT
+  state_sc := RED;//semaforo de coches a rojo
+  state_sp := RED;//semaforo de peatones a rojo
   TON_sc.IN := TRUE;//arrancamos el temporizador
   TON_sc.PT := T#1s;//de un segundo
   TON_sc();
 END_PROGRAM
 
-PROGRAM_CYCLE
+PROGRAM _CYCLE
+   
    //AVANCE DE LOS TEMPORIZADORES
-   IF TON_sc.IN  AND TON.Q THEN //acaba de pasar un segundo
-     TON_sc.IN = FALSE;//paramos el temporizador
+   IF TON_sc.IN AND TON.Q THEN //acaba de pasar un segundo
+     TON_sc.IN := FALSE;//paramos el temporizador
      IF state_sc = YELLOW  THEN //en ambar
-        yellow_timer := yellow_timer + 1;//incrementamos el temporizador de ambar en uno
+        sc_yellow_timer := sc_yellow_timer + 1;//incrementamos el temporizador de ambar en uno
      ELSIF state_sc = RED THEN//en rojo
-        red_timer:= red_timer + 1;//incrementamos el temporizador de rojo en uno
+        sc_red_timer := sc_red_timer + 1;//incrementamos el temporizador de rojo en uno
      ELSIF state_sc = GREEN THEN//en verde
-        green_timer := green_timer + 1;//incrementamos el temporizador de verde en uno
+        sc_green_timer := sc_green_timer + 1;//incrementamos el temporizador de verde en uno
      END_IF
      TON_sc.IN := TRUE;//reinciamos el temporizador
      TON_sc.PT := T#1s;//con un tiempo igual a un segundo
@@ -22,52 +24,50 @@ PROGRAM_CYCLE
    END_IF
    //FIN DEL CONTROLADOR
 
+  //ACCION ANTE LOS ESTADOS SEMAFORO DE PEATONES
+  IF state_sp = RED THEN
+  	IF state_sc = RED AND sc_red_timer < 2 THEN
+	  do_sp_red := FALSE;//verde a off
+	  state_sp := GREEN;
+  	ELSE
+     	  do_sp_red := TRUE;//rojo a on
+  	END_IF
+  ELSIF state_sp = GREEN THEN//semaforo de peatones a verde
+     IF state_sc = RED AND sc_red_timer > 2 THEN//trascurridos los 3 segundos del semaforo de coches el de peatones a rojo
+        do_sp_green := FALSE;//verde a off
+	state_sp := RED;
+     ELSE
+        do_sp_green := TRUE;//verde a on
+     END_IF
+  END_IF
+  //FIN ACCIONES
+
   //ACCIONES ANTE LOS ESTADOS DEL SEMAFORO DE COCHES
   IF state_sc = RED THEN//estado semaforo de coches a rojo
-    IF sc_red_timer > 4 THEN
-      sc_red_timer := 0;
-      state_sc := GREEN;
+    IF sc_red_timer > 4 THEN//han pasado los 5 segundos
+      sc_red_timer := 0;//reiniciamos el timer
       do_sc_red := FALSE;//rojo a OFF
-    ELSIF
+      state_sc := GREEN;//ir al verde
+    ELSE
       do_sc_red := TRUE;//rojo a ON
     END_IF
   ELSIF state_sc = YELLOW THEN //estado semaforo de coches a amarrillo
     IF sc_yellow_timer > 1 THEN//tras 2 segundos en amarillo ir al rojo
        sc_yellow_timer := 0;//reiniciamos el temporizador
+       do_sc_yellow := FALSE;//amarillo a off
        state_sc := RED;
-       do_sc_yellow:= FALSE;//amarillo a off
-    ELSIF
+    ELSE
        do_sc_yellow := TRUE;//amarillo a on
     END_IF
-  ELIF state_sc = GREEN THEN//estado semaforo de coches  a verde
+  ELSIF state_sc = GREEN THEN//estado semaforo de coches  a verde
     IF sc_green_timer > 4 THEN//tras 5 segundos en rojo ir al verde
       sc_green_timer :=0;//reiniciamos el temporizador
+      do_sc_green := FALSE;//rojo a off
       state_sc := YELLOW;//ir al estado verde
-      do_sc_green:= FALSE;//rojo a off
-    ELSIF 
+    ELSE 
       do_sc_green:=TRUE;//verde a on
     END_IF
   END_IF
   //FIN ACCIONES 
-
-  //ACCION ANTE LOS ESTADOS SEMAFORO DE PEATONES
-  IF state_sp = RED THEN//semaforo de peatones a rojo
-     IF state_sc = RED AND sc_red_timer < 2 THEN
-        do_sp_red := FALSE;//verde a off
-	state_sp = GREEN;
-     ELSE
-        do_sp_red := TRUE;//rojo a on
-     END_IF
-  ELSIF state_sp = GREEN THEN//semaforo de peatones a verde
-     IF state_sc = RED AND sc_red_timer > 2 THEN//trascurridos los 3 segundos del semaforo de coches el de peatones a rojo
-        do_sp_green := FALSE;//verde a off
-	state_sp = RED;
-     ELSE
-        do_sp_green := TRUE;//verde a on
-     END_IF;
-   
-  END_IF
-  //FIN ACCIONES
-
 
 END_PROGRAM

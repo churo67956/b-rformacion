@@ -1,22 +1,26 @@
+PROGRAM _INIT
 //arrancamos el temporizador
 TON_ms.IN := TRUE;
 TON_ms.PT := T#0.5s;
 TON_ms();
+END_PROGRAM
+
+PROGRAM _CYCLE
 
 //peticion de resetear el timer, esto cuando se pulsa el boton puede que no coincida con los 0.5s o multiplos
 IF timer_reset THEN
+   timer_reset := FALSE;
    TON_ms.IN := FALSE;
    TON_ms.IN := TRUE;
    TON_ms.PT := T#0.5s;
    TON_ms();
 END_IF
 
-
 //avanzamos los temporizadores
 IF TON_ms.IN and TON_ms.Q THEN//tras una unidad de tiempo de 0.5s
    TON_ms := FALSE;//para el temporizador
    //para el semaforo de coches
-   IF  sc_state = RED THEN//rojo en coches
+   IF sc_state = RED THEN//rojo en coches
        sc_red_timer := sc_red_timer + 1;//incrementar el contador
    ELSIF sc_state := YELLOW THEN//amarillo en coches
        sc_yellow_timer := sc_yellow_timer + 1;//incrementar el contador
@@ -30,7 +34,7 @@ IF TON_ms.IN and TON_ms.Q THEN//tras una unidad de tiempo de 0.5s
    END_IF	   
    //para el semaforo de peatones
    IF sp_state = RED_FIX THEN//rojo fijo
-      sp_red_timer : sp_red_timer + 1;//incrementar el timer
+      sp_red_timer := sp_red_timer + 1;//incrementar el timer
    ELSIF sp_state = GREEN THEN//verde
       sp_green_timer := sp_green_timer + 1;//incrementar el timer
    ELSIF sp_state = GREEN_INT THEN//verde intermitente
@@ -39,11 +43,12 @@ IF TON_ms.IN and TON_ms.Q THEN//tras una unidad de tiempo de 0.5s
    END_IF
    TON_ms.Q := TRUE;
    TON_ms.PT := T#0.5s;
+   TON_ms();
 END_IF
 
-IF  sc_state = GREEN THEN//en verde coches
+IF sc_state = GREEN THEN//en verde coches
     IF sc_green_timer > 9 THEN//tras los 5 segundos
-       sc_green_timer :=0;//reiniciar el temporizador
+       sc_green_timer := 0;//reiniciar el temporizador
        do_sc_green := FALSE;//apagar el verde
        sc_state = YELLOW;//ir al amarillo
     ELSE
@@ -76,10 +81,10 @@ ELSIF sc_state = YELLOW_INT THEN//amarillo intermitente
      IF sc_yi_timer > 5 THEN//tras 3 segundos
      	sc_yi_timer := 0;//reiniciar el timer
 	yi_timer := 0;//reniciar el timer de animacion
-	sc_state = RED_LON;//ir a rojo de duracion larga
 	do_sc_yellow := FALSE;//apagar el amarillo
+	sc_state := RED_LON;//ir a rojo de duracion larga
      ELSIF
-       IF yi_timer > 1 THEN//tras la duracion de la animacion
+       IF yi_timer > 0 THEN//tras la duracion de la animacion
        	  yi_timer := 0;//reinciar el timer 
        	  do_sc_yellow := NOT do_sc_yellow;//realizar el toggle
        END_IF
@@ -95,14 +100,14 @@ ELSIF sc_state = RED_LON THEN
 END_IF
 
 
- IF state_sp = RED THEN//semaforo de peatones a rojo
-     IF state_sc = YELLOW_INT AND  THEN
-       state_sp = RED_FIX;
+IF state_sp = RED THEN//semaforo de peatones a rojo
+     IF state_sp = YELLOW_INT AND di_btn_pass THEN
        do_sp_red := FALSE;
+       state_sp := RED_FIX;
      ELSE
         do_sp_red := TRUE;//rojo a on
      END_IF
-  ELSIF state_sp = RED_FIX THEN//semaforo de peatones a verde
+ELSIF state_sp = RED_FIX THEN//semaforo de peatones a verde
      IF sp_red_timer > 5 THEN
      	sp_red_timer := 0;
 	do_sp_red := FALSE;
@@ -122,10 +127,10 @@ END_IF
      IF sc_gi_timer > 4 THEN
      	sc_gi_timer := 0;
 	gi_timer := 0;
-	sc_state = RED;
 	do_sp_green := FALSE;
+	sc_state = RED;
      ELSE
-       IF gi_timer > 1 THEN
+       IF gi_timer > 0 THEN
        	  gi_timer := 0;
        	  do_sp_green := NOT do_sp_green;
        END_IF
@@ -135,18 +140,4 @@ END_IF
   //FIN ACCIONES
 
   di_btn_pass := FALSE;
-// limites maximos de los temporizadores de los coches
-sc_red_timer_max := 5/0.5;//temporizacion maxima del estado rojo
-sc_yellow_timer_max := 2/0.5;//temporizacion maxima del estado de amarillo
-sc_green_timer_max := 5/0.5;//temporizacion maxima del estado de verde
-sc_yi_timer_max := 3/0.5;//temporizacion maxima del estado de amarillo intermitente
-sc_rl_timer_max := 8/0.;//temporizacion maxima del estado rojo largo
-//limites maximos de lso temproizadores de los peatones
-sp_red_timer_max := 3/0.5;
-sp_green_timer_max:=5/0.5;
-sp_gi_timer_max:=3/0.5;
-
-//SERVICIO DE INTERMINENTE EXISTEN DOS UNO PARA EL AMARILLO Y OTRO PARA EL VERDE
-yi_timer_max := 1;
-gi_timer_max := 1;
 

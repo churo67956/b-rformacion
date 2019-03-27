@@ -1,161 +1,76 @@
-VAR CONSTANT
-	NORMAL : USINT := 0; //coche normal
-	RESIDENT : USINT := 1;//coche residente
-	NORMAL_EXIT : USINT := 2; //coche normal
-	RESIDENT_EXIT : USINT := 3;//coche residenteç
-	WAIT : USINT := 4;//estado de espera
-	MAXRP : USINT := 10;//maximo numero de plazas en un parking residencia
-	MAXNP : USINT := 20;//maximo numero de plazas en un parking normal
-	
-END_VAR 
 
-VAR 
-	enoughPlaceInResidencialPark : BOOL;//indicador de la existencia de plazas libres o no dentro del parking residencial
-	enoughPlaceInNormalPark : BOOL;//indicador de la existencia de plazas libres o no dentro del parking normal
-	rpcounter: USINT;//contador del numero de plazas ocupadas en el parking residencial
-	npcounter:  USINT;//contador del numero de plazas ocupadas en el parking normal
-	state : USINT;//estado del coche puede ser normal o residente
 	
-END_VAR
-
-PROGRAM_CYCLE
-	
-	CASE state OF 
-		WAIT:
-			light_control;control de las luces	
-			attend_user_request;//atendemos a la peticion del usuario
-			open_entry_door;//se encarga de gestionar la apertura de las puertas de entrada del garaje		
-			open_exit_door;/se encarga de gestionar la apertura de las puertas salida del garaje
-		NORMAL_ENTRY:
-			normal_entry;
-			state := WAIT;
-		NORMAL_EXIT:
-			normal_exit;
-			state := WAIT;
-		RESIDENT_ENTRY:
-			resident_entry;
-			state := WAIT;
-		RESIDENT_EXIT:
-			resident_exit;
-			state := WAIT;
-	END_CASE
+PROGRAM _INIT
+	state := WAIT;
 END_PROGRAM
 
-//control de las luces de completo del parking
-ACTION light_control
-	enough_place_in_resident_park;
-	do_fullResidentPark := enoughPlace = FALSE;
-	enough_place_in_normal_park;
-	do_fullResidentPark := enoughPlace = FALSE;
-END_ACTION
-
-//funcion de atencion a la peticion del usuario
-ACTION attend_user_request
-	IF di_residential_entry THEN//peticion de entrada como residente
-		state := RESIDENT_ENTRY;//entrada de residente		
-	ELSIF di_normal_entry THEN//peticion de entrada normal
-		state := NORMAL_ENTRY;//entrada normal
-	ELSIF di_residential_exit THEN//peticion de entrada como residente
-		state := RESIDENT_ENTRY;//entrada de residente		
-	ELSIF di_normal_exit THEN//peticion de entrada normal
-		state := NORMAL_ENTRY;//entrada normal
-	END_IF
-	di_residential_exit := FALSE;//resetamos el estado del boton de salida residencial
-	di_normal_exit := FALSE;//resetamos el estado del boton de salida normal
-	di_residential_entry := FALSE;//resetamos el estado del boton de entrada residencial
-	di_normal_entry := FALSE;//resetamos el estado del boton de entrada normal
-END_ACTION
-
-ACTION normal_entry
-	do_entryDoor := TRUE;//abre la puerta de entrada
-	npnormal := npnormal + 1;//incrementa el numero de coches
-	//do_entryDoor := FALSE;//cierra la puerta de entrada 
-END_ACTION
-
-ACTION normal_exit
-	do_normalExitDoor := TRUE;//abre la puerta de entrada
-	npnormal := npnormal - 1;
-	//do_normalExitDoor := FALSE
-END_ACTION
-
-ACTION resident_entry
-	do_entryDoor := TRUE;//abre la puerta de entrada
-	do_access := TRUE;//abre la puerta de acceso residencia
-	rpnormal := rpnormal + 1;
-//	do_entryDoor := FALSE;//cierra la puerta de entrada 
-//	do_access := FALSE;//cierra la puerta de acceso
-	state := WAIT;
-END_ACTION
-
-ACTION resident_exit;
-	do_residentExitDoor := TRUE;//abre la puerta de entrada
-	rpnormal := rpnormal - 1;
-//	do_residentExitDoor := FALSE;//abre la puerta de entrada
-END_ACTION
-
-ACTION open_entry_door
-	allow_entry;//esta permitida la entrada
-	IF allowEntry = FALSE THEN
-		IF state = RESIDENT_ENTRY THEN//solicitamos una entrada normal
-			state := WAIT;//actualizamos el estado
-			di_normal_entry := TRUE;//simulamos el pulsado del boton
-		END_IF
-	END_IF
-END_ACTION
 
 
-
-ACTION open_exit_door
-	IF state = RESIDENT_EXIT THEN //usuarios residenciales
-		IF rpcounter > 0 THEN//numero de plazas ocupadas en el parking residencia inferior al maximo
-			allow_exit = TRUE;//si existe sitio libre
-		ELSE
-			allow_exit = FALSE;//no existe sitio libre
-		END_IF
-	ELSIF state = NORMAL_EXIT THEN //usuarios normales
-		IF npcounter > 0 THEN//numero de plazas ocupadas en el parking residencia inferior al maximo
-			allow_exit = TRUE;//si existe sitio libre
-		ELSE
-			allow_exit = FALSE;//no existe sitio libre
-		END_IF
-	END_IF
-	IF allow_exit = FALSE THEN
-		state := WAIT;
-	END_IF
-END_ACTION
-
-ACTION allow_entry
-	IF state = RESIDENT_ENTRY THEN //usuarios residenciales
-		enough_place_in_resident_park;
-		IF enoughPlaceResidentPark THEN
-			allowEntry := TRUE;
-		ELSE
-			allowEntry := FALSE;
-		END_IF
-	ELSIF state = NORMAL_ENTRY THEN //usuarios normales
-		enough_place_in_normal_park;
-		IF enoughPlaceNormalPark THEN
-			allowEntry := TRUE;
-		ELSE
-			allowEntry := FALSE;
-		END_IF
-	ELSE
-		allowEntry := FALSE;	
+PROGRAM _CYCLIC 
 	
-END_ACTION
+		IF state = WAIT THEN //estado de espera
+			//ATENCION DE LAS PETICIONS DEL USUARIO
+			IF di_residential_entry THEN//peticion de entrada como residente
+				state := RESIDENT_ENTRY;//entrada de residente		
+			ELSIF di_normal_entry THEN//peticion de entrada normal
+				state := NORMAL_ENTRY;//entrada normal
+			ELSIF di_residential_exit THEN//peticion de entrada como residente
+				state := RESIDENT_EXIT;//entrada de residente		
+			ELSIF di_normal_exit THEN//peticion de entrada normal
+				state := NORMAL_EXIT;//entrada normal
+			ELSIF di_reset THEN
+				state := RESET;//entrada normal
+			END_IF
+			//FIN DE LA ATENCION A LAS PETICIONES DEL USUARIO
+			
+			
+			//ACTUALIZAMOS LAS VARIABLES DE SALIDA
+			do_full_rp := rpcounter = MAXRP;//bombilla parque lleno residencial
+			do_full_np := npcounter = MAXRP;//bombilla parque lleno normal
+			//FIN ACTUALIZACION DE LAS VARIABLES DE SALIDA
+			
+			//RESETEAMOS LAS VARIABLES DE ENTRADA
+			di_residential_exit := FALSE;//resetamos el estado del boton de salida residencial
+			di_normal_exit := FALSE;//resetamos el estado del boton de salida normal
+			di_residential_entry := FALSE;//resetamos el estado del boton de entrada residencial
+			di_normal_entry := FALSE;//resetamos el estado del boton de entrada normal
+			//FIN RESETEAMOS LAS VARIABLES DE ENTRADA
+			
+			
+			
+		ELSIF state = RESIDENT_ENTRY THEN
+			IF rpcounter < MAXRP THEN
+				do_entryDoor := TRUE;//abre la puerta de entrada
+				do_access := TRUE;//abre la puerta de acceso residencia
+				rpncounter := rpcounter + 1;//incrementa en uno el numero de plazas ocupadas
+				state := WAIT;
+			ELSE
+				state := NORMA_ENTRY;
+			END_IF
+		ELSIF state = NORMAL_ENTRY THEN
+			IF npcounter < MAXRP THEN
+				do_entryDoor := TRUE;//abre la puerta de entrada
+				npcounter := npcounter + 1;//incrementa el numero de coches
+			END_IF
+			state := WAIT;
+		ELSIF NORMAL_EXIT THEN
+			IF npcounter > 0 THEN
+				do_normalExitDoor := TRUE;//abre la puerta de entrada
+				npcounter := npcounter - 1;
+			END_IF
+			state := WAIT;
+		ELSIF state = RESIDENT_EXIT THEN
+			IF rpcounter > 0 THEN
+				do_residentExitDoor := TRUE;//abre la puerta de entrada
+				rpcounter := rpcounter - 1;
+			END_IF
+			state := WAIT;
+		ELSIF state = RESET THEN
+			do_entryDoor := FALSE;
+			do_access := FALSE;
+			do_residentExitDoor := FALSE;
+			do_normalExitDoor := FALSE;
+		END_IF
+	END_PROGRAM
 
-ACTION enough_place_in_resident_park 
-	IF rpcounter < MAXRP THEN//numero de plazas ocupadas en el parking residencia inferior al maximo
-		enoughPlaceResidentPark = TRUE;//si existe sitio libre
-	ELSE
-		enoughPlaceResidentPark= FALSE;//no existe sitio libre
-	END_IF
-END_ACTION
 
-ACTION enough_place_in_normal_park 
-	IF npcounter < MAXNP THEN//numero de plazas ocupadas en el parking residencia inferior al maximo
-		enoughPlaceNormalPark = TRUE;//si existe sitio libre
-	ELSE
-		enoughPlaceNormalPark = FALSE;//no existe sitio libre
-	END_IF
-END_ACTION
