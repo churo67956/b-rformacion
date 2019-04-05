@@ -1,76 +1,161 @@
-
-	
 PROGRAM _INIT
 	state := WAIT;
+	
 END_PROGRAM
 
+//nclose_animation
 
 
 PROGRAM _CYCLIC 
 	
-		IF state = WAIT THEN //estado de espera
-			//ATENCION DE LAS PETICIONS DEL USUARIO
-			IF di_residential_entry THEN//peticion de entrada como residente
-				state := RESIDENT_ENTRY;//entrada de residente		
-			ELSIF di_normal_entry THEN//peticion de entrada normal
-				state := NORMAL_ENTRY;//entrada normal
-			ELSIF di_residential_exit THEN//peticion de entrada como residente
-				state := RESIDENT_EXIT;//entrada de residente		
-			ELSIF di_normal_exit THEN//peticion de entrada normal
-				state := NORMAL_EXIT;//entrada normal
-			ELSIF di_reset THEN
-				state := RESET;//entrada normal
-			END_IF
-			//FIN DE LA ATENCION A LAS PETICIONES DEL USUARIO
+
+	//ATENCION DE LAS PETICIONS DEL USUARIO
+	IF di_residential_entry THEN//peticion de entrada como residente
+		state := RESIDENT_ENTRY;//entrada de residente		
+	ELSIF di_normal_entry THEN//peticion de entrada normal
+		state := NORMAL_ENTRY;//entrada normal
+	ELSIF di_residential_exit THEN//peticion de entrada como residente
+		state := RESIDENT_EXIT;//entrada de residente		
+	ELSIF di_normal_exit THEN//peticion de entrada normal
+		state := NORMAL_EXIT;//entrada normal
+	END_IF
+	//FIN DE LA ATENCION A LAS PETICIONES DEL USUARIO
+	
+	IF (lastState = CLOSE_ENTRY_DOOR OR lastState = CLOSE_RESIDENT_EXIT OR lastState = CLOSE_NORMAL_EXIT ) THEN
+		state := lastState;
+	END_IF
+	
+	//Acondicionamientos 
+	IF (state <> lastState) THEN
+		IF (state = CLOSE_ENTRY_DOOR) THEN //acondicionamiento de entrada al estado
+			TON_open.IN := TRUE;
+			TON_open.PT := T#1s;
+		ELSIF (state = CLOSE_RESIDENT_EXIT) THEN //acondicionamiento de entrada al estado
+			TON_rclose.IN := TRUE;
+			TON_rclose.PT := T#1s;
+		ELSIF (state = CLOSE_NORMAL_EXIT)  THEN //acondicionamiento de entrada al estado
+			TON_nclose.IN := TRUE;
+			TON_nclose.PT := T#1s;
+		ELSIF (lastState = CLOSE_ENTRY_DOOR) THEN //acondicionamiento de entrada al estado
+				ced_timer := 0;
+		ELSIF (lastState = CLOSE_RESIDENT_EXIT) THEN //acondicionamiento de entrada al estado
+			cred_timer:= 0;
+		ELSIF (lastState = CLOSE_NORMAL_EXIT)  THEN //acondicionamiento de entrada al estado
+			cned_timer := 0;
+		END_IF
+	END_IF
+	
+	//TEMPORIZADOR PUERTA CIERRE PRINCIPAL
+	IF TON_open.IN AND TON_open.Q THEN
+		TON_open.IN := FALSE;
+		TON_open();
+		ced_timer := ced_timer + 1;
+		TON_open.IN := TRUE;
+		TON_open.PT := T#1s;
+	END_IF
+	//TEMPORIZADOR CIERRE PUERTA SALIDA RESIDENTE
+	IF TON_rclose.IN AND TON_rclose.Q THEN
+		TON_rclose.IN := FALSE;
+		TON_rclose();
+		cred_timer := cred_timer + 1;
+		TON_rclose.IN := TRUE;
+		TON_rclose.PT := T#1s;
+	END_IF
+	//TEMPORIZADOR CIERRE PUERTA SALIDA NORMAL
+	IF TON_nclose.IN AND TON_nclose.Q THEN
+		TON_nclose.IN := FALSE;
+		TON_nclose();
+		cned_timer := cned_timer + 1;
+		TON_nclose.IN := TRUE;
+		TON_nclose.PT := T#1s;
+	END_IF
+	
 			
-			
-			//ACTUALIZAMOS LAS VARIABLES DE SALIDA
-			do_full_rp := rpcounter = MAXRP;//bombilla parque lleno residencial
-			do_full_np := npcounter = MAXRP;//bombilla parque lleno normal
-			//FIN ACTUALIZACION DE LAS VARIABLES DE SALIDA
-			
-			//RESETEAMOS LAS VARIABLES DE ENTRADA
-			di_residential_exit := FALSE;//resetamos el estado del boton de salida residencial
-			di_normal_exit := FALSE;//resetamos el estado del boton de salida normal
-			di_residential_entry := FALSE;//resetamos el estado del boton de entrada residencial
-			di_normal_entry := FALSE;//resetamos el estado del boton de entrada normal
-			//FIN RESETEAMOS LAS VARIABLES DE ENTRADA
-			
-			
-			
-		ELSIF state = RESIDENT_ENTRY THEN
-			IF rpcounter < MAXRP THEN
-				do_entryDoor := TRUE;//abre la puerta de entrada
-				do_access := TRUE;//abre la puerta de acceso residencia
-				rpncounter := rpcounter + 1;//incrementa en uno el numero de plazas ocupadas
-				state := WAIT;
-			ELSE
-				state := NORMA_ENTRY;
-			END_IF
-		ELSIF state = NORMAL_ENTRY THEN
-			IF npcounter < MAXRP THEN
-				do_entryDoor := TRUE;//abre la puerta de entrada
-				npcounter := npcounter + 1;//incrementa el numero de coches
-			END_IF
+	IF state = RESIDENT_ENTRY THEN
+		IF rpcounter < MAXRP THEN
+			do_entryDoor := TRUE;//abre la puerta de entrada
+			do_access := TRUE;//abre la puerta de acceso residencia
+			rpcounter := rpcounter + 1;//incrementa en uno el numero de plazas ocupadas
+			state := CLOSE_ENTRY_DOOR;
+		ELSE
+			state := NORMAL_ENTRY;
+		END_IF
+		lastState := RESIDENT_ENTRY;
+	ELSIF state = NORMAL_ENTRY THEN
+		IF npcounter < MAXRP THEN
+			do_entryDoor := TRUE;//abre la puerta de entrada
+			npcounter := npcounter + 1;//incrementa el numero de coches
+			state := CLOSE_ENTRY_DOOR;
+		ELSE
 			state := WAIT;
-		ELSIF NORMAL_EXIT THEN
-			IF npcounter > 0 THEN
-				do_normalExitDoor := TRUE;//abre la puerta de entrada
-				npcounter := npcounter - 1;
-			END_IF
+		END_IF
+		lastState := NORMAL_ENTRY;
+	ELSIF state = NORMAL_EXIT THEN
+		IF npcounter > 0 THEN
+			do_normalExitDoor := TRUE;//abre la puerta de entrada
+			npcounter := npcounter - 1;
+			state := CLOSE_NORMAL_EXIT;
+		ELSE
 			state := WAIT;
-		ELSIF state = RESIDENT_EXIT THEN
-			IF rpcounter > 0 THEN
-				do_residentExitDoor := TRUE;//abre la puerta de entrada
-				rpcounter := rpcounter - 1;
-			END_IF
+		END_IF
+		lastState := NORMAL_EXIT;
+	ELSIF state = RESIDENT_EXIT THEN
+		IF rpcounter > 0 THEN
+			do_residentExitDoor := TRUE;//abre la puerta de entrada
+			rpcounter := rpcounter - 1;
+			state := CLOSE_RESIDENT_EXIT;
+		ELSE
 			state := WAIT;
-		ELSIF state = RESET THEN
+		END_IF
+		lastState := RESIDENT_EXIT;
+	ELSIF state = CLOSE_ENTRY_DOOR THEN
+		IF (ced_timer > 2) THEN
+			ced_timer := 0;
 			do_entryDoor := FALSE;
 			do_access := FALSE;
-			do_residentExitDoor := FALSE;
-			do_normalExitDoor := FALSE;
+			state := WAIT;
+		ELSE
+			state := CLOSE_ENTRY_DOOR;	
 		END_IF
-	END_PROGRAM
+		lastState := RESIDENT_EXIT;		
+	ELSIF state = CLOSE_NORMAL_EXIT THEN
+		IF (cned_timer > 2) THEN
+			cned_timer := 0;
+			do_normalExitDoor := FALSE;
+			state := WAIT;
+		ELSE
+			state := CLOSE_NORMAL_EXIT ;
+		END_IF
+		lastState := CLOSE_NORMAL_EXIT;
+		
+	ELSIF state = CLOSE_RESIDENT_EXIT THEN
+		IF (cred_timer > 2) THEN
+			cred_timer := 0;
+			do_residentExitDoor  := FALSE;
+			state := WAIT;
+		ELSE
+			state := CLOSE_RESIDENT_EXIT;
+		END_IF
+		lastState := CLOSE_RESIDENT_EXIT;
+	END_IF
+	
+	//ACTUALIZAMOS LAS VARIABLES DE SALIDA
+	do_full_rp := NOT (rpcounter = MAXRP);//bombilla parque lleno residencial
+	do_full_np := NOT (npcounter = MAXNP);//bombilla parque lleno normal
+	//FIN ACTUALIZACION DE LAS VARIABLES DE SALIDA
+			
+	//RESETEAMOS LAS VARIABLES DE ENTRADA
+	di_residential_exit := FALSE;//resetamos el estado del boton de salida residencial
+	di_normal_exit := FALSE;//resetamos el estado del boton de salida normal
+	di_residential_entry := FALSE;//resetamos el estado del boton de entrada residencial
+	di_normal_entry := FALSE;//resetamos el estado del boton de entrada normal
+	//FIN RESETEAMOS LAS VARIABLES DE ENTRADA
+	
+	
+	TON_nclose();
+	TON_rclose();
+	TON_open();
+	
+END_PROGRAM
 
 
