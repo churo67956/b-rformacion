@@ -36,12 +36,6 @@ PROGRAM _CYCLIC
 		ELSIF (state = CLOSE_NORMAL_EXIT)  THEN //acondicionamiento de entrada al estado
 			TON_nclose.IN := TRUE;
 			TON_nclose.PT := T#1s;
-		ELSIF (lastState = CLOSE_ENTRY_DOOR) THEN //acondicionamiento de entrada al estado
-				ced_timer := 0;
-		ELSIF (lastState = CLOSE_RESIDENT_EXIT) THEN //acondicionamiento de entrada al estado
-			cred_timer:= 0;
-		ELSIF (lastState = CLOSE_NORMAL_EXIT)  THEN //acondicionamiento de entrada al estado
-			cned_timer := 0;
 		END_IF
 	END_IF
 	
@@ -82,7 +76,7 @@ PROGRAM _CYCLIC
 		END_IF
 		lastState := RESIDENT_ENTRY;
 	ELSIF state = NORMAL_ENTRY THEN
-		IF npcounter < MAXRP THEN
+		IF npcounter < MAXNP THEN
 			do_entryDoor := TRUE;//abre la puerta de entrada
 			npcounter := npcounter + 1;//incrementa el numero de coches
 			state := CLOSE_ENTRY_DOOR;
@@ -116,8 +110,9 @@ PROGRAM _CYCLIC
 			state := WAIT;
 		ELSE
 			state := CLOSE_ENTRY_DOOR;	
+			TON_open();
 		END_IF
-		lastState := RESIDENT_EXIT;		
+		lastState := CLOSE_ENTRY_DOOR;		
 	ELSIF state = CLOSE_NORMAL_EXIT THEN
 		IF (cned_timer > 2) THEN
 			cned_timer := 0;
@@ -125,6 +120,7 @@ PROGRAM _CYCLIC
 			state := WAIT;
 		ELSE
 			state := CLOSE_NORMAL_EXIT ;
+			TON_nclose();
 		END_IF
 		lastState := CLOSE_NORMAL_EXIT;
 		
@@ -135,6 +131,7 @@ PROGRAM _CYCLIC
 			state := WAIT;
 		ELSE
 			state := CLOSE_RESIDENT_EXIT;
+			TON_rclose();
 		END_IF
 		lastState := CLOSE_RESIDENT_EXIT;
 	END_IF
@@ -152,10 +149,8 @@ PROGRAM _CYCLIC
 	//FIN RESETEAMOS LAS VARIABLES DE ENTRADA
 	
 	
-	TON_nclose();
-	TON_rclose();
-	TON_open();
 	
 END_PROGRAM
+
 
 
